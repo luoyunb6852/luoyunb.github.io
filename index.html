@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>洛雨个人引导页</title>
+    <style>
+        :root {
+            --modal-bg: rgba(10, 15, 20, 0.85);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+            color: #fff;
+            overflow: hidden;
+            background: #0a0f14;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-drag: none;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* 闪电遮罩 */
+        .lightning-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: 9998;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.08s ease-out;
+            will-change: opacity;
+            background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 80%);
+        }
+        .lightning-overlay.flash {
+            opacity: 1;
+            transition: opacity 0.02s ease-in;
+        }
+
+        .flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 80%);
+            z-index: 9999;
+            pointer-events: none;
+            animation: flashBoom 0.8s ease-out forwards;
+            opacity: 1;
+        }
+        @keyframes flashBoom {
+            0% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1);
+                visibility: hidden;
+            }
+        }
+
+        /* 背景 */
+        .bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("https://api.suyanw.cn/api/comic3.php") center center / cover no-repeat;
+            filter: brightness(0.5) saturate(1.1);
+            z-index: -2;
+            animation: bgSlowZoom 30s infinite alternate ease-in-out;
+            will-change: transform;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+        .bg-container.loaded {
+            opacity: 1;
+        }
+        @keyframes bgSlowZoom {
+            0% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(1.05);
+            }
+        }
+
+        /* Canvas 雨滴 */
+        #rainCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* 页面包装 */
+        .page-wrap {
+            opacity: 0;
+            transform: scale(0.95) translateZ(0);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            will-change: transform, opacity;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .page-wrap.show {
+            opacity: 1;
+            transform: scale(1) translateZ(0);
+        }
+
+        /* 主容器 */
+        .main {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 20px 30px;
+            text-align: center;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* 入场动画：从上到下依次 */
+        .main>* {
+            opacity: 0;
+            transform: translateY(-50px) scale(0.92) translateZ(0);
+            transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform, opacity;
+        }
+        .page-wrap.show .main>* {
+            opacity: 1;
+            transform: translateY(0) scale(1) translateZ(0);
+        }
+
+        .page-wrap.show .avatar {
+            transition-delay: 0.05s;
+        }
+        .page-wrap.show h1 {
+            transition-delay: 0.25s;
+        }
+        .page-wrap.show .desc {
+            transition-delay: 0.45s;
+        }
+        .page-wrap.show .btn-group {
+            transition-delay: 0.65s;
+        }
+        .page-wrap.show .info {
+            transition-delay: 0.85s;
+        }
+        .page-wrap.show .friend-link-wrap {
+            transition-delay: 1.05s;
+        }
+
+        /* 头像 */
+        .avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            background: url("https://api.suyanw.cn/api/qq.php/?qq=410280942") center center / cover no-repeat;
+            margin-bottom: 20px;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+            transition: box-shadow 0.5s;
+            flex-shrink: 0;
+        }
+        .avatar:hover {
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.4);
+        }
+
+        h1 {
+            font-size: clamp(28px, 5vw, 40px);
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 18px rgba(0, 0, 0, 0.7), 0 0 8px rgba(255, 255, 255, 0.2);
+        }
+
+        .desc {
+            font-size: clamp(14px, 2.5vw, 17px);
+            opacity: 0.85;
+            margin-bottom: 45px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 按钮组 */
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 14px;
+            max-width: 950px;
+            margin-bottom: 35px;
+        }
+
+        .btn-group a {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 50px;
+            color: #fff;
+            text-decoration: none;
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-group a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-group a:active {
+            transform: translateY(0px);
+            transition: all 0.1s;
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(0);
+            animation: rippleEffect 0.7s ease-out;
+            pointer-events: none;
+        }
+        @keyframes rippleEffect {
+            to {
+                transform: scale(4.5);
+                opacity: 0;
+            }
+        }
+
+        /* 底部信息 */
+        .info {
+            font-size: clamp(12px, 2vw, 14px);
+            opacity: 0.9;
+            line-height: 2;
+            padding: 18px 0 8px;
+            width: 100%;
+        }
+
+        .info .links {
+            margin: 8px 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .info .links a {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            font-weight: 500;
+            position: relative;
+            transition: color 0.3s;
+            padding: 2px 4px;
+        }
+
+        .info .links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: #fff;
+            transition: width 0.3s;
+        }
+        .info .links a:hover {
+            color: #fff;
+        }
+        .info .links a:hover::after {
+            width: 100%;
+        }
+
+        /* 友情链接按钮 (底部居中) */
+        .friend-link-wrap {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 6px;
+            padding-bottom: 4px;
+        }
+
+        .friend-link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 28px;
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-family: inherit;
+            letter-spacing: 0.5px;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .friend-link-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.45);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .friend-link-btn:active {
+            transform: translateY(0px);
+            transition: all 0.1s;
+        }
+
+        .friend-link-btn .icon {
+            font-size: 18px;
+        }
+
+        /* 友情链接模态框 */
+        .friend-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            padding: 20px;
+        }
+
+        .friend-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .friend-modal {
+            background: rgba(20, 28, 40, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            max-width: 520px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 255, 255, 0.05);
+            transform: scale(0.92) translateY(30px);
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+            opacity: 0;
+            padding: 0;
+        }
+
+        .friend-modal-overlay.active .friend-modal {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        .friend-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 28px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .friend-modal-header h2 {
+            font-size: clamp(20px, 3vw, 26px);
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #fff;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .friend-modal-header h2 .icon {
+            font-size: 24px;
+        }
+
+        .friend-modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .friend-modal-close:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
+            transform: rotate(90deg);
+        }
+
+        .friend-modal-body {
+            padding: 20px 28px 28px;
+        }
+
+        .friend-modal-body .friend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .friend-modal-body .friend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .friend-modal-body .friend-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateX(4px);
+            color: #fff;
+        }
+
+        .friend-modal-body .friend-item .name {
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .friend-modal-body .friend-item .name .emoji {
+            font-size: 18px;
+        }
+
+        .friend-modal-body .friend-item .arrow {
+            font-size: 16px;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+
+        .friend-modal-body .friend-item:hover .arrow {
+            opacity: 0.9;
+        }
+
+        .friend-modal-body .empty-tip {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 30px 0;
+            font-size: 15px;
+        }
+
+        /* 音乐按钮 */
+        .music-btn {
+            position: fixed;
+            right: 25px;
+            bottom: 25px;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .music-btn::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            animation: pulseRing 2s infinite;
+        }
+        @keyframes pulseRing {
+            0% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        .music-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .music-btn.playing {
+            animation: softSpin 3s linear infinite;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        @keyframes softSpin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Toast */
+        .custom-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: rgba(20, 20, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 60px;
+            padding: 14px 28px;
+            color: #fff;
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 255, 255, 0.1);
+            z-index: 9999;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            white-space: nowrap;
+        }
+        .custom-toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast-icon {
+            font-size: 20px;
+        }
+
+        /* 滚动条 */
+        .friend-modal::-webkit-scrollbar {
+            width: 4px;
+        }
+        .friend-modal::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .friend-modal::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        .friend-modal::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .music-btn {
+                right: 16px;
+                bottom: 20px;
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+            .btn-group {
+                gap: 10px;
+            }
+            .btn-group a {
+                padding: 10px 18px;
+            }
+            .avatar {
+                width: 90px;
+                height: 90px;
+            }
+            .custom-toast {
+                padding: 10px 20px;
+                border-radius: 40px;
+                white-space: normal;
+                max-width: 90%;
+            }
+            .friend-modal {
+                max-width: 94%;
+                max-height: 70vh;
+            }
+            .friend-modal-body {
+                padding: 16px 18px 20px;
+            }
+            .friend-modal-header {
+                padding: 16px 18px 12px;
+            }
+            .friend-modal-body .friend-item {
+                padding: 12px 14px;
+            }
+            .friend-link-btn {
+                padding: 8px 20px;
+                font-size: 13px;
+            }
+            .friend-link-btn .icon {
+                font-size: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .music-btn {
+                right: 10px;
+                bottom: 14px;
+                width: 38px;
+                height: 38px;
+                font-size: 18px;
+            }
+            .btn-group a {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+            .avatar {
+                width: 75px;
+                height: 75px;
+                border-width: 2px;
+            }
+            h1 {
+                letter-spacing: 1px;
+            }
+            .main {
+                padding: 15px 15px 20px;
+            }
+            .friend-modal {
+                max-width: 96%;
+                max-height: 65vh;
+            }
+            .friend-modal-body .friend-item .name {
+                font-size: 13px;
+            }
+            .friend-link-btn {
+                padding: 6px 16px;
+                font-size: 12px;
+            }
+            .friend-link-btn .icon {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 闪电动画遮罩 -->
+    <div class="flash-overlay"></div>
+
+    <!-- 闪电 overlay -->
+    <div class="lightning-overlay" id="lightningOverlay"></div>
+
+    <!-- 背景 -->
+    <div class="bg-container" id="bgContainer"></div>
+
+    <!-- 雨滴 Canvas -->
+    <canvas id="rainCanvas"></canvas>
+
+    <!-- 背景音乐 -->
+    <audio id="bgMusic" loop preload="auto">
+        <source src="https://link.hhtjim.com/163/1381755293.mp3" type="audio/mpeg">
+        您的浏览器不支持音频播放。
+    </audio>
+
+    <!-- Toast -->
+    <div id="customToast" class="custom-toast">
+        <span class="toast-icon">🚫</span>
+        <span id="toastMessage">主播提醒：不可以偷看哦～</span>
+    </div>
+
+    <!-- 页面主体 -->
+    <div class="page-wrap" id="pageWrap">
+        <div class="main">
+
+            <div class="avatar"></div>
+            <h1>洛雨个人引导页</h1>
+            <p class="desc">本站官网: 暂无</p>
+
+            <div class="btn-group">
+                <a href="https://qun.qq.com/universal-share/share?ac=1&authKey=HttJWVFU8awy%2FUKR9VOXVXxcR2pRzbGosk20Sq9OVuOGgXI0GnT5RTSlc53mkYRC&busi_data=eyJncm91cENvZGUiOiI0OTYwNjM2ODciLCJ0b2tlbiI6Im5SamlBZWFsTll6S1plSzdHSFptbEJlVTBBbGlZaTdwNXRXVDdIY0UrN1poc24zTjRBQVp5dkM3ejcrMVR0V20iLCJ1aW4iOiIxNzgxNDI2MjAzIn0%3D&data=zgiUI_h5yzkpFrkbFUfpXxOVOax7xf6YtS5xbmS9qr3FshETMV3xT3YO8shfJuEXIMmbwoL4UIu6reZT_rjGCw&svctype=4&tempid=h5_group_info" target="_blank" rel="noopener noreferrer">洛雨官方Q群 加入Q群获得提取码</a>
+                <a href="https://1821970077.share.123pan.cn/123pan/E8Zajv-mjDs3?" target="_blank" rel="noopener noreferrer">123网盘绿色版</a>
+            </div>
+
+            <div class="info">
+                <p>今日访客：999+ &nbsp;&nbsp; 总访客：999999+</p>
+                <p>网站已运行：<span id="runtime">计算中...</span></p>
+                <p>©2026 洛雨の个人引导页</p>
+            </div>
+
+            <div class="friend-link-wrap">
+                <button class="friend-link-btn" id="friendLinkBtn">
+                    <span class="icon">🤝</span>
+                    友情链接
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 友情链接模态框 -->
+    <div class="friend-modal-overlay" id="friendModalOverlay">
+        <div class="friend-modal" id="friendModal">
+            <div class="friend-modal-header">
+                <h2><span class="icon">🔗</span> 友情链接</h2>
+                <button class="friend-modal-close" id="friendModalClose">✕</button>
+            </div>
+            <div class="friend-modal-body" id="friendModalBody"></div>
+        </div>
+    </div>
+
+    <!-- 音乐按钮 -->
+    <div class="music-btn" id="musicToggle" title="播放音乐">♫</div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ================================================================
+            //  DOM 引用
+            // ================================================================
+            const toast = document.getElementById('customToast');
+            const toastMsg = document.getElementById('toastMessage');
+            const pageWrap = document.getElementById('pageWrap');
+            const bgContainer = document.getElementById('bgContainer');
+            const canvas = document.getElementById('rainCanvas');
+            const ctx = canvas.getContext('2d');
+            const music = document.getElementById('bgMusic');
+            const musicBtn = document.getElementById('musicToggle');
+            const runtimeSpan = document.getElementById('runtime');
+            const lightningOverlay = document.getElementById('lightningOverlay');
+
+            const friendBtn = document.getElementById('friendLinkBtn');
+            const modalOverlay = document.getElementById('friendModalOverlay');
+            const modalClose = document.getElementById('friendModalClose');
+            const modalBody = document.getElementById('friendModalBody');
+
+            // ================================================================
+            //  友情链接数据
+            // ================================================================
+            const friendLinks = [
+                { name: '无', url: '无', emoji: '无' },
+                { name: '无', url: '无', emoji: '无' },
+                { name: '无', url: '无', emoji: '无' },
+            ];
+
+            function renderFriendLinks() {
+                if (!modalBody) return;
+                if (!friendLinks || friendLinks.length === 0) {
+                    modalBody.innerHTML = '<div class="empty-tip">暂无友情链接，欢迎交换～</div>';
+                    return;
+                }
+                let html = '';
+                for (const item of friendLinks) {
+                    const emoji = item.emoji || '🔗';
+                    html += `
+                        <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="friend-item">
+                            <span class="name">
+                                <span class="emoji">${emoji}</span>
+                                ${item.name}
+                            </span>
+                            <span class="arrow">→</span>
+                        </a>
+                    `;
+                }
+                modalBody.innerHTML = html;
+            }
+
+            // ================================================================
+            //  模态框控制
+            // ================================================================
+            function openModal() {
+                modalOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeModal() {
+                modalOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+
+            friendBtn.addEventListener('click', openModal);
+            modalClose.addEventListener('click', closeModal);
+
+            modalOverlay.addEventListener('click', function(e) {
+                if (e.target === modalOverlay) closeModal();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
+                    closeModal();
+                }
+            });
+
+            // ================================================================
+            //  背景预加载
+            // ================================================================
+            function preloadBackground() {
+                const img = new Image();
+                img.src = "http://.cn/bjt.png";
+                img.onload = () => { bgContainer.classList.add('loaded'); };
+                img.onerror = () => { bgContainer.classList.add('loaded'); };
+                setTimeout(() => {
+                    if (!bgContainer.classList.contains('loaded')) {
+                        bgContainer.classList.add('loaded');
+                    }
+                }, 2000);
+            }
+            preloadBackground();
+
+            // ================================================================
+            //  Toast
+            // ================================================================
+            let toastTimer;
+
+            function showCustomToast(message, icon = '🚫') {
+                if (toastTimer) clearTimeout(toastTimer);
+                const iconEl = toast.querySelector('.toast-icon');
+                if (iconEl) iconEl.textContent = icon;
+                toastMsg.textContent = message;
+                toast.classList.add('show');
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2600);
+            }
+
+            // ================================================================
+            //  入场动画
+            // ================================================================
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    pageWrap.classList.add('show');
+                }, 300);
+                renderFriendLinks();
+            });
+
+            // ================================================================
+//  雨滴系统 (增强版)
+            // ================================================================
+            let w = canvas.width = window.innerWidth;
+            let h = canvas.height = window.innerHeight;
+            const isMobile = w < 768;
+            const isSmallMobile = w < 480;
+
+            const rainCount = isSmallMobile ? 140 : (isMobile ? 220 : 300);
+            const rain = [];
+            const splashParticles = [];
+            const MAX_SPLASH_PARTICLES = 120;
+            let flashIntensity = 0;
+            let nextLightningTime = performance.now() + 4000 + Math.random() * 12000;
+            let lastFrameTime = performance.now();
+
+            class Raindrop {
+                constructor() {
+                    this.reset(true);
+                }
+
+                reset(initial = false) {
+                    this.x = Math.random() * w;
+                    this.y = initial ? Math.random() * h : Math.random() * -h * 0.6 - 10;
+                    this.layer = Math.random();
+
+                    if (this.layer < 0.30) {
+                        this.len = Math.random() * 8 + 3;
+                        this.speed = Math.random() * 2.5 + 2.0;
+                        this.opacity = Math.random() * 0.20 + 0.08;
+                        this.width = 0.5;
+                        this.hasTrail = false;
+                        this.headBright = false;
+                    } else if (this.layer < 0.65) {
+                        this.len = Math.random() * 12 + 7;
+                        this.speed = Math.random() * 3.5 + 3.5;
+                        this.opacity = Math.random() * 0.30 + 0.18;
+                        this.width = 0.9;
+                        this.hasTrail = Math.random() < 0.6;
+                        this.headBright = Math.random() < 0.4;
+                    } else {
+                        this.len = Math.random() * 18 + 10;
+                        this.speed = Math.random() * 5.0 + 4.5;
+                        this.opacity = Math.random() * 0.25 + 0.28;
+                        this.width = 1.3;
+                        this.hasTrail = true;
+                        this.headBright = Math.random() < 0.6;
+                    }
+
+                    this.windDrift = (Math.random() - 0.5) * 0.6;
+                    this.trailLen = this.hasTrail ? this.len * (Math.random() * 0.40 + 0.15) : 0;
+                    this.trailOpacity = this.opacity * 0.35;
+                }
+
+                update(dt) {
+                    const dtFactor = dt / 16.67;
+                    this.y += this.speed * dtFactor;
+                    this.x += this.windDrift * dtFactor;
+
+                    if (this.y > h) {
+                        this.spawnSplash();
+                        this.reset(false);
+                        this.y = -this.len - Math.random() * 30;
+                    }
+                    if (this.x < -25) this.x = w + 25;
+                    if (this.x > w + 25) this.x = -25;
+                }
+
+                spawnSplash() {
+                    if (splashParticles.length >= MAX_SPLASH_PARTICLES) return;
+                    if (this.layer < 0.20 || Math.random() > 0.55) return;
+                    const count = Math.floor(Math.random() * 4) + 1;
+                    const splashX = this.x + (Math.random() - 0.5) * 4;
+                    const splashY = h - Math.random() * 3;
+                    for (let i = 0; i < count; i++) {
+                        if (splashParticles.length >= MAX_SPLASH_PARTICLES) break;
+                        splashParticles.push({
+                            x: splashX + (Math.random() - 0.5) * 8,
+                            y: splashY,
+                            vx: (Math.random() - 0.5) * 3.0,
+                            vy: -(Math.random() * 4.0 + 1.5),
+                            life: 0.3 + Math.random() * 0.5,
+                            maxLife: 0.3 + Math.random() * 0.5,
+                            size: Math.random() * 2.2 + 0.5,
+                            opacity: this.opacity * 1.2,
+                            gravity: 0.15 + Math.random() * 0.10,
+                        });
+                    }
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x + this.windDrift * 1.8, this.y + this.len);
+                    ctx.strokeStyle = `rgba(210,225,255,${this.opacity})`;
+                    ctx.lineWidth = this.width;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+
+                    if (this.headBright) {
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y + 1, this.width * 0.6, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(240,248,255,${this.opacity * 0.5})`;
+                        ctx.fill();
+                    }
+
+                    if (this.hasTrail && this.trailLen > 2) {
+                        ctx.beginPath();
+                        ctx.moveTo(this.x - this.windDrift * 0.3, this.y - this.trailLen * 0.5);
+                        ctx.lineTo(this.x + this.windDrift * 0.5, this.y + this.trailLen * 0.2);
+                        ctx.strokeStyle = `rgba(200,215,250,${this.trailOpacity})`;
+                        ctx.lineWidth = this.width * 0.45;
+                        ctx.lineCap = 'round';
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            for (let i = 0; i < rainCount; i++) {
+                rain.push(new Raindrop());
+            }
+
+            function triggerLightning() {
+                flashIntensity = 0.35 + Math.random() * 0.35;
+                lightningOverlay.classList.add('flash');
+                const mainDuration = 50 + Math.random() * 90;
+                setTimeout(() => {
+                    if (Math.random() < 0.4) {
+                        lightningOverlay.classList.remove('flash');
+                        void lightningOverlay.offsetWidth;
+                        lightningOverlay.classList.add('flash');
+                    }
+                }, 30);
+                setTimeout(() => {
+                    lightningOverlay.classList.remove('flash');
+                }, mainDuration + 30);
+                nextLightningTime = performance.now() + 5000 + Math.random() * 18000;
+            }
+
+            function updateSplashParticles(dt) {
+                const dtFactor = dt / 16.67;
+                for (let i = splashParticles.length - 1; i >= 0; i--) {
+                    const p = splashParticles[i];
+                    p.vy += p.gravity * dtFactor;
+                    p.x += p.vx * dtFactor;
+                    p.y += p.vy * dtFactor;
+                    p.vx *= 0.995;
+                    p.life -= dt / 1000;
+                    if (p.life <= 0 || p.y > h + 20 || p.x < -20 || p.x > w + 20) {
+                        splashParticles.splice(i, 1);
+                    }
+                }
+            }
+            function drawSplashParticles() {
+                for (const p of splashParticles) {
+                    const alpha = (p.life / p.maxLife) * p.opacity;
+                    if (alpha <= 0) continue;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * (0.5 + 0.5 * (p.life / p.maxLife)), 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(210,225,255,${alpha})`;
+                    ctx.fill();
+                    if (p.size > 1.2) {
+                        ctx.beginPath();
+                        ctx.arc(p.x - p.size * 0.2, p.y - p.size * 0.2, p.size * 0.25, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255,255,255,${alpha * 0.3})`;
+                        ctx.fill();
+                    }
+                }
+            }
+
+            function drawGroundRipples() {
+                const rippleCount = 6;
+                for (let i = 0; i < rippleCount; i++) {
+                    const x = (i / rippleCount) * w + Math.sin(performance.now() / 3000 + i * 2) * 30;
+                    const y = h - 8 - Math.sin(performance.now() / 4000 + i * 1.5) * 4;
+                    const radius = 12 + Math.sin(performance.now() / 2000 + i * 1.2) * 5;
+                    const alpha = 0.04 + 0.02 * Math.sin(performance.now() / 2500 + i * 1.8);
+                    ctx.beginPath();
+                    ctx.ellipse(x, y, radius, radius * 0.25, 0, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(180,210,255,${alpha})`;
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                }
+            }
+
+            function animateRain(timestamp) {
+                const dt = Math.min(timestamp - lastFrameTime, 200);
+                lastFrameTime = timestamp;
+                ctx.clearRect(0, 0, w, h);
+
+                if (flashIntensity > 0.002) {
+                    ctx.fillStyle = `rgba(255,255,255,${flashIntensity})`;
+                    ctx.fillRect(0, 0, w, h);
+                    flashIntensity *= 0.78;
+                    if (flashIntensity < 0.002) flashIntensity = 0;
+                }
+
+                for (const drop of rain) {
+                    drop.update(dt);
+                    drop.draw();
+                }
+
+                updateSplashParticles(dt);
+                drawSplashParticles();
+                drawGroundRipples();
+
+                if (timestamp > nextLightningTime && flashIntensity < 0.01) {
+                    triggerLightning();
+                }
+
+                requestAnimationFrame(animateRain);
+            }
+
+            requestAnimationFrame((ts) => {
+                lastFrameTime = ts;
+                nextLightningTime = ts + 3000 + Math.random() * 8000;
+                animateRain(ts);
+            });
+
+            window.addEventListener('resize', function() {
+                w = canvas.width = window.innerWidth;
+                h = canvas.height = window.innerHeight;
+                for (const drop of rain) {
+                    drop.x = Math.min(drop.x, w);
+                    if (drop.y > h) drop.y = Math.random() * h;
+                }
+                splashParticles.length = 0;
+                antiDebug.checkWindowSize();
+            });
+
+            // ================================================================
+            //  反调试系统 (全面增强版)
+            // ================================================================
+            const antiDebug = (function() {
+                let devToolsOpen = false;
+                let devToolsCheckCount = 0;
+                let consoleClearInterval = null;
+                let devToolsInterval = null;
+                const DEVTOOLS_THRESHOLD = 80;
+
+                // Toast 快捷引用
+                function _showToast(msg, icon) {
+                    if (typeof showCustomToast === 'function') {
+                        showCustomToast(msg, icon);
+                    }
+                }
+
+                // 核心 debugger 检测
+                function checkDebugger() {
+                    const start = performance.now();
+                    try {
+                        debugger;
+                    } catch (e) { /* 忽略 */ }
+                    const diff = performance.now() - start;
+                    if (diff > DEVTOOLS_THRESHOLD) {
+                        if (!devToolsOpen) {
+                            devToolsOpen = true;
+                            _onDetected();
+                        }
+                        devToolsCheckCount++;
+                        if (devToolsCheckCount > 3 && devToolsCheckCount % 2 === 0) {
+                            _showToast('开发者工具已检测到！请关闭后访问', '🔒');
+                        }
+                    } else {
+                        if (devToolsOpen && diff < 20) {
+                            devToolsOpen = false;
+                            devToolsCheckCount = 0;
+                            _stopConsoleClear();
+                        }
+                    }
+                }
+
+                // 窗口尺寸检测
+                function checkWindowSize() {
+                    try {
+                        const widthDiff = window.outerWidth - window.innerWidth;
+                        const heightDiff = window.outerHeight - window.innerHeight;
+                        const threshold = 160;
+                        if (widthDiff > threshold || heightDiff > threshold) {
+                            if (!devToolsOpen) {
+                                devToolsOpen = true;
+                                _onDetected();
+                            }
+                        }
+                    } catch (e) { /* 忽略 */ }
+                }
+
+                // Console 篡改检测
+                function checkConsoleHijack() {
+                    try {
+                        const origLog = console.log;
+                        console.log = function() {};
+                        if (typeof console.log !== 'function') {
+                            // 已被篡改，恢复
+                            console.log = origLog;
+                        }
+                        console.log = origLog;
+                    } catch (e) { /* 忽略 */ }
+                }
+
+                // iframe 检测
+                function checkIframe() {
+                    try {
+                        if (window.self !== window.top) {
+                            _showToast('禁止在框架中打开', '🛡️');
+                            try { window.top.location = window.location; } catch (e) { /* 忽略 */ }
+                        }
+                    } catch (e) { /* 忽略 */ }
+                }
+
+                // 移动端调试工具
+                function checkMobileTools() {
+                    try {
+                        if (typeof window.eruda !== 'undefined' ||
+                            typeof window.vConsole !== 'undefined' ||
+                            typeof window.__vconsole !== 'undefined' ||
+                            typeof window.__REACT_DEVTOOLS_GLOBAL_HOOK__ !== 'undefined') {
+                            _showToast('检测到调试工具，请关闭后访问', '📱');
+                            devToolsOpen = true;
+                        }
+                    } catch (e) { /* 忽略 */ }
+                }
+
+                // 检测 Firebug / 其他
+                function checkOtherTools() {
+                    try {
+                        if (window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) {
+                            _showToast('检测到 Firebug', '🔥');
+                            devToolsOpen = true;
+                        }
+                        if (typeof window._phantom !== 'undefined' || typeof window.callPhantom !== 'undefined') {
+                            _showToast('检测到 PhantomJS', '👻');
+                            devToolsOpen = true;
+                        }
+                    } catch (e) { /* 忽略 */ }
+                }
+
+                function _onDetected() {
+                    _showToast('检测到开发者工具！请关闭后继续访问', '🛡️');
+                    if (devToolsInterval) {
+                        clearInterval(devToolsInterval);
+                        devToolsInterval = null;
+                    }
+                    // 加速检测
+                    devToolsInterval = setInterval(() => {
+                        checkDebugger();
+                        checkWindowSize();
+                        checkConsoleHijack();
+                        checkIframe();
+                        checkMobileTools();
+                        checkOtherTools();
+                    }, 300);
+                    _startConsoleClear();
+                }
+
+                function _startConsoleClear() {
+                    if (consoleClearInterval) return;
+                    consoleClearInterval = setInterval(() => {
+                        try {
+                            console.clear();
+                            console.log('%c⚠️ 请关闭开发者工具', 'color: red; font-size: 20px; font-weight: bold;');
+                            console.log('%c🔒 引导页 · 安全防护已激活', 'color: #6bc5ff; font-size: 14px;');
+                        } catch (e) { /* 忽略 */ }
+                    }, 500);
+                }
+
+                function _stopConsoleClear() {
+                    if (consoleClearInterval) {
+                        clearInterval(consoleClearInterval);
+                        consoleClearInterval = null;
+                    }
+                }
+
+                // 对外公开
+                return {
+                    init: function() {
+                        // 启动轮询
+                        devToolsInterval = setInterval(() => {
+                            checkDebugger();
+                            if (devToolsCheckCount === 0) {
+                                checkWindowSize();
+                            }
+                            checkConsoleHijack();
+                            checkIframe();
+                            checkMobileTools();
+                            checkOtherTools();
+                        }, 1000);
+
+                        // 额外：监听鼠标移动异常（可能用于审查）
+                        let lastMove = 0,
+                            moveCount = 0;
+                        document.addEventListener('mousemove', function(e) {
+                            const now = Date.now();
+                            if (now - lastMove < 8) {
+                                moveCount++;
+                                if (moveCount > 40) {
+                                    moveCount = 0;
+                                    _showToast('请勿审查元素', '🔍');
+                                }
+                            } else {
+                                moveCount = Math.max(0, moveCount - 3);
+                            }
+                            lastMove = now;
+                        }, { passive: true });
+
+                        // 检测键盘组合（已在全局拦截，这里补充）
+                        document.addEventListener('keydown', function(e) {
+                            const key = e.key.toLowerCase();
+                            const ctrl = e.ctrlKey || e.metaKey;
+                            const shift = e.shiftKey;
+                            const alt = e.altKey;
+
+                            // 拦截所有可能打开 DevTools 的组合
+                            const blocked = [
+                                'f12', 'i', 'j', 'c', 'u', 's', 'p', 'e', 'a', 'o', 'f', 'h',
+                                'k', 'l', 'm', 'n', 'r', 't', 'w', 'x', 'z'
+                            ];
+                            // 针对 Ctrl+Shift+字母 或 Ctrl+字母
+                            if (ctrl) {
+                                if (key === 'f12') { e.preventDefault();
+                                    _showToast('不要看我源代码', '🔒'); return; }
+                                if (shift && (key === 'i' || key === 'j' || key === 'c' || key === 'e' || key ===
+                                        'a' || key === 'o' || key === 'p')) {
+                                    e.preventDefault();
+                                    _showToast('禁止打开开发者工具', '🛡️');
+                                    return;
+                                }
+                                if (!shift && (key === 'u' || key === 's' || key === 'p' || key === 'f' || key ===
+                                        'h' || key === 'j')) {
+                                    e.preventDefault();
+                                    _showToast('该操作已被禁止', '🚫');
+                                    return;
+                                }
+                            }
+                            // 单独 F12
+                            if (e.key === 'F12') {
+                                e.preventDefault();
+                                _showToast('不要看我源代码', '🔒');
+                            }
+                            // Alt+方向键等
+                            if (alt && (key === 'arrowleft' || key === 'arrowright')) {
+                                e.preventDefault();
+                            }
+                        });
+
+                        // 额外：禁止通过 about:blank 等方式
+                        if (window.location.protocol === 'about:') {
+                            window.location.href = window.location.href.replace('about:', '');
+                        }
+
+                        // 保护 console 方法
+                        const methods = ['log', 'warn', 'error', 'info', 'debug'];
+                        for (const m of methods) {
+                            const orig = console[m];
+                            Object.defineProperty(console, m, {
+                                value: function() {
+                                    // 正常调用
+                                    return orig.apply(console, arguments);
+                                },
+                                writable: false,
+                                configurable: false
+                            });
+                        }
+
+                        // 保护 eval
+                        const origEval = window.eval;
+                        Object.defineProperty(window, 'eval', {
+                            value: function() {
+                                // 禁止 eval 被用于调试
+                                return origEval.apply(window, arguments);
+                            },
+                            writable: false,
+                            configurable: false
+                        });
+
+                        // 保护 Function 构造函数
+                        const origFunction = window.Function;
+                        Object.defineProperty(window, 'Function', {
+                            value: function() {
+                                // 防止动态构造代码
+                                return origFunction.apply(window, arguments);
+                            },
+                            writable: false,
+                            configurable: false
+                        });
+
+                        console.log('%c🔒 反调试系统已全面启动', 'color: #ff6b6b; font-size: 14px; font-weight: bold;');
+                    },
+                    checkWindowSize: checkWindowSize,
+                    // 手动触发检测
+                    forceCheck: function() {
+                        checkDebugger();
+                        checkWindowSize();
+                        checkConsoleHijack();
+                        checkIframe();
+                        checkMobileTools();
+                        checkOtherTools();
+                    }
+                };
+            })();
+
+            // 初始化反调试
+            antiDebug.init();
+
+            // 页面可见性变化时重置计数
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    // 可能切换到了 DevTools
+                }
+            });
+
+            // ================================================================
+            //  其他全局拦截 (已部分在 antiDebug 的 keydown 中实现，但为了保险再补一层)
+            // ================================================================
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                showCustomToast('不要偷我图！', '🖱️');
+                return false;
+            });
+
+            document.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            document.addEventListener('selectstart', function(e) {
+                if (!e.target.closest('input, textarea')) {
+                    e.preventDefault();
+                }
+            });
+
+            // 额外的键盘拦截（防止被覆盖，再绑定一次）
+            document.addEventListener('keydown', function(e) {
+                // 所有快捷键已在 antiDebug 中拦截，这里补充一些遗漏
+                const key = e.key.toLowerCase();
+                const ctrl = e.ctrlKey || e.metaKey;
+                const shift = e.shiftKey;
+                if (ctrl && shift && (key === 'k' || key === 'l')) {
+                    e.preventDefault();
+                    showCustomToast('禁止使用此快捷键', '⛔');
+                }
+            }, true);
+
+            // ================================================================
+            //  运行时计算
+            // ================================================================
+            const startDate = new Date('2023-06-14T00:00:00');
+
+            function updateRuntime() {
+                const now = new Date();
+                const diffSeconds = Math.floor((now - startDate) / 1000);
+                if (diffSeconds < 0) {
+                    runtimeSpan.textContent = '0 天 0 小时 0 分钟 0 秒';
+                    return;
+                }
+                const days = Math.floor(diffSeconds / 86400);
+                const hours = Math.floor((diffSeconds % 86400) / 3600);
+                const minutes = Math.floor((diffSeconds % 3600) / 60);
+                const seconds = diffSeconds % 60;
+                runtimeSpan.textContent = `${days} 天 ${hours} 小时 ${minutes} 分钟 ${seconds} 秒`;
+            }
+            updateRuntime();
+            setInterval(updateRuntime, 1000);
+
+            // ================================================================
+            //  音乐控制
+            // ================================================================
+            let isPlaying = false;
+            musicBtn.textContent = '♫';
+
+            function tryPlay() {
+                music.play().then(() => {
+                    isPlaying = true;
+                    musicBtn.classList.add('playing');
+                    musicBtn.textContent = '♪';
+                }).catch(() => {
+                    isPlaying = false;
+                });
+            }
+            tryPlay();
+
+            const initAudioHandler = function initAudio() {
+                if (!isPlaying) {
+                    tryPlay();
+                }
+                if (isPlaying) {
+                    document.removeEventListener('click', initAudioHandler);
+                }
+            };
+            document.addEventListener('click', initAudioHandler, { once: false });
+
+            musicBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (isPlaying) {
+                    music.pause();
+                    isPlaying = false;
+                    musicBtn.classList.remove('playing');
+                    musicBtn.textContent = '♫';
+                } else {
+                    music.play().then(() => {
+                        isPlaying = true;
+                        musicBtn.classList.add('playing');
+                        musicBtn.textContent = '♪';
+                    }).catch(() => {
+                        showCustomToast('音乐播放失败，请检查链接或稍后再试', '🎵');
+                    });
+                }
+            });
+
+            music.addEventListener('error', function() {
+                if (isPlaying) {
+                    isPlaying = false;
+                    musicBtn.classList.remove('playing');
+                    musicBtn.textContent = '♫';
+                }
+                console.warn('背景音乐加载失败，链接可能已失效');
+            });
+
+            // ================================================================
+            //  按钮涟漪效果
+            // ================================================================
+            document.querySelectorAll('.btn-group a').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const oldRipple = this.querySelector('.ripple');
+                    if (oldRipple) oldRipple.remove();
+                    const ripple = document.createElement('span');
+                    ripple.className = 'ripple';
+                    const size = Math.max(this.offsetWidth, this.offsetHeight);
+                    ripple.style.width = ripple.style.height = size + 'px';
+                    const rect = this.getBoundingClientRect();
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    ripple.style.left = x + 'px';
+                    ripple.style.top = y + 'px';
+                    this.appendChild(ripple);
+                    ripple.addEventListener('animationend', () => ripple.remove());
+                });
+            });
+
+            // ================================================================
+            //  控制台提示
+            // ================================================================
+            console.log(
+                '%c✨ の个人引导页 %c已就绪',
+                'font-size:16px;color:#fff;background:#333;padding:4px 8px;border-radius:4px;',
+                'font-size:12px;color:#aaa;'
+            );
+            console.log(
+                '%c🔒 反调试系统 %c已激活 | %c🌧️ 增强雨滴 %c已启动 | %c⚡ 柔和闪电 %c已就绪 | %c🤝 友情链接 %c已加载',
+                'color:#ff6b6b;', 'color:#aaa;',
+                'color:#6bc5ff;', 'color:#aaa;',
+                'color:#ffd93d;', 'color:#aaa;',
+                'color:#a8e6cf;', 'color:#aaa;'
+            );
+            console.log('✅ 所有系统已就绪，欢迎访问 .cn');
+
+            // 防止用户通过 console 访问敏感数据
+            Object.defineProperty(window, 'friendLinks', {
+                configurable: false,
+                enumerable: false,
+                writable: false,
+                value: friendLinks
+            });
+
+            // 额外保护：禁止修改 console 对象
+            Object.freeze(console);
+
+        })();
+    </script>
+</body>
+</html>
